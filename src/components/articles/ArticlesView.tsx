@@ -4,18 +4,13 @@ import {
   Search,
   RefreshCw,
   FileArchive,
-  Filter,
   Eye,
-  SlidersHorizontal,
   ChevronDown,
-  Layers,
-  ArrowUpDown,
-  MoreVertical,
-  Check,
-  Plus,
 } from 'lucide-react';
 import { ManageVariantsModal } from '../modals/ManageVariantsModal';
 import { ImportZipModal } from '../modals/ImportZipModal';
+import { EditArticleModal } from '../modals/EditArticleModal';
+import { ConfirmActionModal } from '../modals/ConfirmActionModal';
 
 interface ArticlesViewProps {
   articles: ArticleListing[];
@@ -26,6 +21,10 @@ interface ArticlesViewProps {
   onAddVariant: (variant: Omit<ArticleVariant, 'id' | 'views' | 'lastRepostedAt'>) => void;
   onToggleArticleStatus: (articleId: string) => void;
   onNavigateToConversations: (articleId: string) => void;
+  onUpdateArticle?: (updatedArticle: ArticleListing) => void;
+  onArchiveOnFacebook?: (articleId: string) => void;
+  onDeleteFromFacebook?: (articleId: string) => void;
+  onDeleteFromWorkspace?: (articleId: string) => void;
 }
 
 export const ArticlesView: React.FC<ArticlesViewProps> = ({
@@ -37,13 +36,36 @@ export const ArticlesView: React.FC<ArticlesViewProps> = ({
   onAddVariant,
   onToggleArticleStatus,
   onNavigateToConversations,
+  onUpdateArticle,
+  onArchiveOnFacebook,
+  onDeleteFromFacebook,
+  onDeleteFromWorkspace,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Published' | 'Draft' | 'Archived'>('Published');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedArticleForVariants, setSelectedArticleForVariants] = useState<ArticleListing | null>(null);
+  const [selectedArticleForEdit, setSelectedArticleForEdit] = useState<ArticleListing | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [activeActionMenuId, setActiveActionMenuId] = useState<string | null>(null);
+  const [perPage, setPerPage] = useState<number>(10);
+
+  // Confirm Action Dialog State
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    confirmVariant: 'danger' | 'warning' | 'primary';
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    confirmVariant: 'danger',
+    onConfirm: () => {},
+  });
 
   const handleRefreshClick = () => {
     setIsRefreshing(true);
@@ -64,6 +86,45 @@ export const ArticlesView: React.FC<ArticlesViewProps> = ({
   const totalViews = articles.reduce((acc, a) => acc + a.views, 0);
   const totalAccountListings = articles.reduce((acc, a) => acc + a.totalAccountListings, 0);
 
+  // Action handlers
+  const handleArchiveOnFB = (article: ArticleListing) => {
+    if (onArchiveOnFacebook) {
+      onArchiveOnFacebook(article.id);
+    } else {
+      onToggleArticleStatus(article.id);
+    }
+  };
+
+  const promptDeleteFromFB = (article: ArticleListing) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete from Facebook Marketplace',
+      message: `Are you sure you want to delete "${article.title}" from Facebook Marketplace? This will remove all ${article.totalAccountListings} active listings across linked accounts.`,
+      confirmText: 'Delete from Facebook',
+      confirmVariant: 'danger',
+      onConfirm: () => {
+        if (onDeleteFromFacebook) {
+          onDeleteFromFacebook(article.id);
+        }
+      },
+    });
+  };
+
+  const promptDeleteFromWorkspace = (article: ArticleListing) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete from Workspace',
+      message: `Are you sure you want to remove "${article.title}" from your workspace? This will permanently erase the product, its rotation variants, and settings.`,
+      confirmText: 'Delete from workspace',
+      confirmVariant: 'danger',
+      onConfirm: () => {
+        if (onDeleteFromWorkspace) {
+          onDeleteFromWorkspace(article.id);
+        }
+      },
+    });
+  };
+
   return (
     <div className="space-y-6">
       
@@ -78,7 +139,7 @@ export const ArticlesView: React.FC<ArticlesViewProps> = ({
           <button
             onClick={handleRefreshClick}
             disabled={isRefreshing}
-            className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg transition-colors disabled:opacity-60"
+            className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg transition-colors disabled:opacity-60 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-blue-400' : 'text-slate-400'}`} />
             <span>{isRefreshing ? 'Checking...' : 'Refresh views'}</span>
@@ -86,7 +147,7 @@ export const ArticlesView: React.FC<ArticlesViewProps> = ({
 
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-sm shadow-blue-500/20 transition-all"
+            className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-sm shadow-blue-500/20 transition-all cursor-pointer"
           >
             <FileArchive className="w-4 h-4" />
             <span>Import ZIP</span>
@@ -94,17 +155,17 @@ export const ArticlesView: React.FC<ArticlesViewProps> = ({
         </div>
       </div>
 
-      {/* Metrics Row (Anti-slop zero-pill clean layout) */}
+      {/* Metrics Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-slate-900/60 border border-slate-800/80 rounded-2xl">
         <div className="space-y-1">
           <span className="text-xs text-slate-400">Total Products</span>
           <p className="text-2xl font-bold font-mono text-white tracking-tight">{articles.length}</p>
-          <span className="text-[11px] text-slate-500">2 active catalog articles</span>
+          <span className="text-[11px] text-slate-500">{articles.length} active catalog articles</span>
         </div>
         <div className="space-y-1">
           <span className="text-xs text-slate-400">Facebook Listings</span>
           <p className="text-2xl font-bold font-mono text-emerald-400 tracking-tight">{totalAccountListings}</p>
-          <span className="text-[11px] text-slate-500">Spread over 5 FB accounts</span>
+          <span className="text-[11px] text-slate-500">Spread over multi-account network</span>
         </div>
         <div className="space-y-1">
           <span className="text-xs text-slate-400">Total Marketplace Views</span>
@@ -155,16 +216,16 @@ export const ArticlesView: React.FC<ArticlesViewProps> = ({
               setSearchQuery('');
               setStatusFilter('All');
             }}
-            className="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white bg-slate-950/50 hover:bg-slate-800 border border-slate-800 rounded-lg transition-colors whitespace-nowrap"
+            className="px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-white bg-slate-950/50 hover:bg-slate-800 border border-slate-800 rounded-lg transition-colors whitespace-nowrap cursor-pointer"
           >
             Reset
           </button>
         </div>
       </div>
 
-      {/* Articles Table (Clean modern data grid) */}
-      <div className="bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+      {/* Articles Table (Matching exact design from reference) */}
+      <div className="bg-slate-900/70 border border-slate-800 rounded-2xl shadow-sm min-h-[360px] flex flex-col justify-between">
+        <div className="overflow-x-auto sm:overflow-visible flex-1 pb-16">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-slate-800/80 bg-slate-950/40 text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
@@ -198,7 +259,6 @@ export const ArticlesView: React.FC<ArticlesViewProps> = ({
                             className="w-full h-full object-cover"
                             referrerPolicy="no-referrer"
                             onError={(e) => {
-                              // Resilient fallback container if image fails
                               (e.target as HTMLElement).style.display = 'none';
                             }}
                           />
@@ -209,19 +269,23 @@ export const ArticlesView: React.FC<ArticlesViewProps> = ({
                             {article.title}
                           </h3>
 
-                          {/* Zero-pill metadata line */}
-                          <div className="flex items-center flex-wrap gap-2 text-slate-400 text-[11px]">
-                            <span className="font-mono text-slate-300 font-medium">
+                          {/* Subtitle & Pill Badges: Active, Archived, Deleted */}
+                          <div className="flex items-center flex-wrap gap-2 text-[11px]">
+                            <span className="text-slate-400 font-medium">
                               {article.totalAccountListings} account listings
                             </span>
-                            <span className="text-slate-600">·</span>
-                            <span className="text-emerald-400 font-mono">Active {article.activeCount}</span>
-                            <span className="text-slate-600">·</span>
-                            <span className="text-blue-400 font-mono">Archived {article.archivedCount}</span>
-                            <span className="text-slate-600">·</span>
-                            <span className="text-slate-500 font-mono">Deleted {article.deletedCount}</span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                              Active {article.activeCount}
+                            </span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-500/15 text-sky-400 border border-sky-500/30">
+                              Archived {article.archivedCount}
+                            </span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                              Deleted {article.deletedCount}
+                            </span>
                           </div>
 
+                          {/* Views & Manage variants link */}
                           <div className="flex items-center gap-3 pt-0.5">
                             <span className="flex items-center gap-1 font-mono text-slate-400 text-[11px]">
                               <Eye className="w-3.5 h-3.5 text-slate-500" />
@@ -230,16 +294,9 @@ export const ArticlesView: React.FC<ArticlesViewProps> = ({
                             <span className="text-slate-600">·</span>
                             <button
                               onClick={() => setSelectedArticleForVariants(article)}
-                              className="text-blue-400 hover:text-blue-300 font-medium hover:underline text-[11px]"
+                              className="text-blue-400 hover:text-blue-300 font-medium hover:underline text-[11px] cursor-pointer"
                             >
                               Manage variants ({article.variantsCount})
-                            </button>
-                            <span className="text-slate-600">·</span>
-                            <button
-                              onClick={() => onNavigateToConversations(article.id)}
-                              className="text-slate-400 hover:text-slate-200 text-[11px]"
-                            >
-                              {article.conversationsCount} conversations ({article.unreadConversationsCount} unread)
                             </button>
                           </div>
                         </div>
@@ -251,10 +308,9 @@ export const ArticlesView: React.FC<ArticlesViewProps> = ({
                       {article.price} dhs
                     </td>
 
-                    {/* Status Column (Clean unboxed indicator) */}
+                    {/* Status Column (Pill Badge) */}
                     <td className="py-4 px-5 text-center whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1.5 text-blue-400 font-medium text-xs">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30">
                         {article.status}
                       </span>
                     </td>
@@ -264,60 +320,104 @@ export const ArticlesView: React.FC<ArticlesViewProps> = ({
                       {article.updatedAt}
                     </td>
 
-                    {/* Actions Column */}
+                    {/* Actions Column (Actions ▾ Dropdown) */}
                     <td className="py-4 px-5 text-right whitespace-nowrap relative">
-                      <div className="inline-flex items-center gap-1.5">
+                      <div className="inline-block relative text-left">
                         <button
-                          onClick={() => setSelectedArticleForVariants(article)}
-                          className="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+                          onClick={() =>
+                            setActiveActionMenuId(
+                              activeActionMenuId === article.id ? null : article.id
+                            )
+                          }
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-200 bg-slate-800 hover:bg-slate-700 hover:text-white border border-slate-700/80 rounded-lg shadow-xs transition-colors cursor-pointer"
                         >
-                          Variants
+                          <span>Actions</span>
+                          <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                         </button>
 
-                        <div className="relative">
-                          <button
-                            onClick={() =>
-                              setActiveActionMenuId(
-                                activeActionMenuId === article.id ? null : article.id
-                              )
-                            }
-                            className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
+                        {/* Dropdown Menu */}
+                        {activeActionMenuId === article.id && (
+                          <>
+                            {/* Backdrop click dismiss */}
+                            <div
+                              className="fixed inset-0 z-20"
+                              onClick={() => setActiveActionMenuId(null)}
+                            />
 
-                          {activeActionMenuId === article.id && (
-                            <div className="absolute right-0 top-full mt-1 w-44 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-1 z-30 text-left">
-                              <button
-                                onClick={() => {
-                                  setSelectedArticleForVariants(article);
-                                  setActiveActionMenuId(null);
-                                }}
-                                className="w-full px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2"
-                              >
-                                <span>Configure rotation</span>
-                              </button>
-                              <button
-                                onClick={() => {
-                                  onNavigateToConversations(article.id);
-                                  setActiveActionMenuId(null);
-                                }}
-                                className="w-full px-3 py-1.5 text-xs text-slate-200 hover:bg-slate-800 flex items-center gap-2"
-                              >
-                                <span>View buyer chats</span>
-                              </button>
-                              <button
-                                onClick={() => {
-                                  onToggleArticleStatus(article.id);
-                                  setActiveActionMenuId(null);
-                                }}
-                                className="w-full px-3 py-1.5 text-xs text-amber-400 hover:bg-slate-800 flex items-center gap-2"
-                              >
-                                <span>Archive listing</span>
-                              </button>
+                            {/* Menu Container */}
+                            <div className="absolute right-0 top-full mt-1.5 w-48 bg-slate-900 border border-slate-700/90 rounded-xl shadow-2xl py-1 z-30 text-left divide-y divide-slate-800/80 animate-in fade-in duration-100">
+                              <div className="py-1">
+                                {/* 1. Edit details */}
+                                <button
+                                  onClick={() => {
+                                    setSelectedArticleForEdit(article);
+                                    setActiveActionMenuId(null);
+                                  }}
+                                  className="w-full px-3.5 py-2 text-xs text-slate-200 hover:text-white hover:bg-slate-800/90 flex items-center transition-colors cursor-pointer"
+                                >
+                                  <span>Edit details</span>
+                                </button>
+
+                                {/* 2. Conversations */}
+                                <button
+                                  onClick={() => {
+                                    onNavigateToConversations(article.id);
+                                    setActiveActionMenuId(null);
+                                  }}
+                                  className="w-full px-3.5 py-2 text-xs text-slate-200 hover:text-white hover:bg-slate-800/90 flex items-center transition-colors cursor-pointer"
+                                >
+                                  <span>Conversations</span>
+                                </button>
+
+                                {/* 3. Account listings */}
+                                <button
+                                  onClick={() => {
+                                    setSelectedArticleForVariants(article);
+                                    setActiveActionMenuId(null);
+                                  }}
+                                  className="w-full px-3.5 py-2 text-xs text-slate-200 hover:text-white hover:bg-slate-800/90 flex items-center transition-colors cursor-pointer"
+                                >
+                                  <span>Account listings</span>
+                                </button>
+
+                                {/* 4. Archive on Facebook */}
+                                <button
+                                  onClick={() => {
+                                    handleArchiveOnFB(article);
+                                    setActiveActionMenuId(null);
+                                  }}
+                                  className="w-full px-3.5 py-2 text-xs text-slate-200 hover:text-white hover:bg-slate-800/90 flex items-center transition-colors cursor-pointer"
+                                >
+                                  <span>Archive on Facebook</span>
+                                </button>
+
+                                {/* 5. Delete from Facebook */}
+                                <button
+                                  onClick={() => {
+                                    promptDeleteFromFB(article);
+                                    setActiveActionMenuId(null);
+                                  }}
+                                  className="w-full px-3.5 py-2 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 flex items-center transition-colors cursor-pointer"
+                                >
+                                  <span>Delete from Facebook</span>
+                                </button>
+                              </div>
+
+                              {/* 6. Delete from workspace */}
+                              <div className="pt-1">
+                                <button
+                                  onClick={() => {
+                                    promptDeleteFromWorkspace(article);
+                                    setActiveActionMenuId(null);
+                                  }}
+                                  className="w-full px-3.5 py-2 text-xs text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 flex items-center transition-colors cursor-pointer"
+                                >
+                                  <span>Delete from workspace</span>
+                                </button>
+                              </div>
                             </div>
-                          )}
-                        </div>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -329,19 +429,50 @@ export const ArticlesView: React.FC<ArticlesViewProps> = ({
 
         {/* Pagination Footer */}
         <div className="px-5 py-3.5 border-t border-slate-800 bg-slate-950/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
-          <span className="font-mono">1–{filteredArticles.length} of {articles.length} listings</span>
+          <span className="font-mono">
+            1–{filteredArticles.length} of {articles.length} listings
+          </span>
           <div className="flex items-center gap-4">
-            <span className="font-mono">Per page 10</span>
+            <div className="flex items-center gap-1.5">
+              <span>Per page</span>
+              <select
+                value={perPage}
+                onChange={(e) => setPerPage(Number(e.target.value))}
+                className="bg-slate-900 border border-slate-800 text-slate-300 rounded-md px-2 py-1 text-xs focus:outline-none cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
             <div className="flex items-center gap-1 font-mono">
-              <button disabled className="px-2.5 py-1 text-slate-600 rounded">Previous</button>
-              <span className="px-2.5 py-1 bg-blue-600/20 text-blue-400 font-semibold rounded">1 / 1</span>
-              <button disabled className="px-2.5 py-1 text-slate-600 rounded">Next</button>
+              <button disabled className="px-2.5 py-1 text-slate-600 rounded cursor-not-allowed">
+                Previous
+              </button>
+              <span className="px-2.5 py-1 bg-blue-600/20 text-blue-400 font-semibold rounded">
+                1
+              </span>
+              <button disabled className="px-2.5 py-1 text-slate-600 rounded cursor-not-allowed">
+                Next
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Variants Modal */}
+      {/* Edit Details Modal */}
+      <EditArticleModal
+        isOpen={Boolean(selectedArticleForEdit)}
+        onClose={() => setSelectedArticleForEdit(null)}
+        article={selectedArticleForEdit}
+        onSave={(updated) => {
+          if (onUpdateArticle) {
+            onUpdateArticle(updated);
+          }
+        }}
+      />
+
+      {/* Manage Variants / Account Listings Modal */}
       <ManageVariantsModal
         isOpen={Boolean(selectedArticleForVariants)}
         onClose={() => setSelectedArticleForVariants(null)}
@@ -356,6 +487,17 @@ export const ArticlesView: React.FC<ArticlesViewProps> = ({
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImportSuccess={onImportZip}
+      />
+
+      {/* Confirmation Modal */}
+      <ConfirmActionModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        confirmVariant={confirmModal.confirmVariant}
       />
 
     </div>

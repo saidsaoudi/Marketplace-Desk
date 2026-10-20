@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ArticleListing, Conversation, ChatMessage, Order, BuyerSentiment } from '../../types';
 import {
   MessageSquare,
@@ -49,6 +49,7 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
     conversations[0]?.id || null
   );
   const [messageInput, setMessageInput] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Find active article
   const activeArticle = articles.find((a) => a.id === selectedArticleId);
@@ -61,7 +62,23 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
     return matchesArticle && matchesAccount && matchesSentiment;
   });
 
-  const activeConversation = conversations.find((c) => c.id === selectedConversationId) || filteredConversations[0];
+  // Always resolve activeConversation from filteredConversations first
+  const activeConversation =
+    filteredConversations.find((c) => c.id === selectedConversationId) ||
+    filteredConversations[0] ||
+    null;
+
+  // Sync selectedConversationId when product filter changes
+  useEffect(() => {
+    if (activeConversation && selectedConversationId !== activeConversation.id) {
+      setSelectedConversationId(activeConversation.id);
+    }
+  }, [activeConversation?.id]);
+
+  // Auto-scroll chat to latest messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [activeConversation?.id, activeConversation?.messages?.length]);
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,11 +211,11 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
       </div>
 
       {/* Main Split Chat Workspace */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 h-[640px] bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 h-[640px] bg-slate-900/70 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
         
         {/* Left Column: Conversation List (4 cols) */}
-        <div className="lg:col-span-4 border-r border-slate-800 flex flex-col bg-slate-950/50 h-full">
-          <div className="p-3.5 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between text-xs">
+        <div className="lg:col-span-4 border-r border-slate-800 flex flex-col bg-slate-950/50 h-full min-h-0">
+          <div className="p-3.5 border-b border-slate-800 bg-slate-950/80 flex items-center justify-between text-xs shrink-0">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-slate-300">Buyer Inquiries</span>
               {activeSentimentFilter !== 'all' && (
@@ -210,7 +227,7 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
             <span className="font-mono text-slate-500">{filteredConversations.length} active</span>
           </div>
 
-          <div className="flex-1 overflow-y-auto divide-y divide-slate-800/60">
+          <div className="flex-1 overflow-y-auto divide-y divide-slate-800/60 min-h-0">
             {filteredConversations.length === 0 ? (
               <div className="p-8 text-center text-slate-500 text-xs space-y-1">
                 <p>No conversations found for current filter.</p>
@@ -322,10 +339,10 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
 
         {/* Right Column: Active Chat Pane (8 cols) */}
         {activeConversation ? (
-          <div className="lg:col-span-8 flex flex-col h-full bg-slate-900/40">
+          <div className="lg:col-span-8 flex flex-col h-full min-h-0 bg-slate-900/40">
             
             {/* Chat Top Banner */}
-            <div className="p-4 border-b border-slate-800 bg-slate-950/60 flex items-center justify-between gap-4">
+            <div className="p-4 border-b border-slate-800 bg-slate-950/60 flex items-center justify-between gap-4 shrink-0">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-700 to-indigo-600 flex items-center justify-center text-sm font-bold text-white shrink-0 shadow-sm">
                   {activeConversation.buyerName.charAt(0)}
@@ -417,7 +434,7 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
             </div>
 
             {/* Messages Thread View */}
-            <div className="flex-1 p-5 overflow-y-auto space-y-3.5">
+            <div className="flex-1 p-5 overflow-y-auto space-y-3.5 min-h-0">
               {activeConversation.messages.map((msg) => {
                 const isBuyer = msg.sender === 'buyer';
                 const isBot = msg.sender === 'bot';
@@ -459,16 +476,17 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
                   </div>
                 );
               })}
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Quick Bot Suggestion Triggers */}
-            <div className="px-4 py-2 bg-slate-950/50 border-t border-slate-800/80 flex items-center gap-2 overflow-x-auto text-[11px]">
+            <div className="px-4 py-2 bg-slate-950/50 border-t border-slate-800/80 flex items-center gap-2 overflow-x-auto text-[11px] shrink-0">
               <span className="text-slate-500 shrink-0 font-medium">Quick Darija replies:</span>
               <button
                 onClick={() =>
                   handleBotQuickAction('Merhba! Kifach n9dro n3awnok?')
                 }
-                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md whitespace-nowrap transition-colors"
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md whitespace-nowrap transition-colors cursor-pointer"
               >
                 👋 Greeting
               </button>
@@ -478,7 +496,7 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
                     'Livraison f ga3 lmaghrib. Tkhless mlli twslek commande.'
                   )
                 }
-                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md whitespace-nowrap transition-colors"
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md whitespace-nowrap transition-colors cursor-pointer"
               >
                 🚚 Delivery Terms
               </button>
@@ -488,7 +506,7 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
                     '3tina smia w num dial tel w lmdina bach n confirmiw commande dialk.'
                   )
                 }
-                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md whitespace-nowrap transition-colors"
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md whitespace-nowrap transition-colors cursor-pointer"
               >
                 📝 Ask Phone & City
               </button>
@@ -496,7 +514,7 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
                 onClick={() =>
                   handleBotQuickAction('Num dialna l contact: 06 60 65 75 70')
                 }
-                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md whitespace-nowrap transition-colors"
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-md whitespace-nowrap transition-colors cursor-pointer"
               >
                 📞 Contact Number
               </button>
@@ -505,7 +523,7 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
             {/* Message Input Box */}
             <form
               onSubmit={handleSend}
-              className="p-3 border-t border-slate-800 bg-slate-950/80 flex items-center gap-2"
+              className="p-3 border-t border-slate-800 bg-slate-950/80 flex items-center gap-2 shrink-0"
             >
               <input
                 type="text"
@@ -517,7 +535,7 @@ export const ConversationsView: React.FC<ConversationsViewProps> = ({
               <button
                 type="submit"
                 disabled={!messageInput.trim()}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl transition-colors disabled:opacity-40 flex items-center gap-1.5"
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl transition-colors disabled:opacity-40 flex items-center gap-1.5 cursor-pointer shrink-0"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Send</span>

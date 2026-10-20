@@ -245,6 +245,65 @@ export default function App() {
     );
   };
 
+  const handleUpdateArticle = (updatedArticle: ArticleListing) => {
+    setArticles((prev) =>
+      prev.map((art) => (art.id === updatedArticle.id ? updatedArticle : art))
+    );
+    addToast('success', 'Details Updated', `Saved changes for "${updatedArticle.title.substring(0, 24)}...".`);
+    logActivity('repost', 'Article updated', `Modified details for "${updatedArticle.title}" (${updatedArticle.price} dhs)`, 'info');
+  };
+
+  const handleArchiveOnFacebook = (articleId: string) => {
+    const target = articles.find((a) => a.id === articleId);
+    if (!target) return;
+    setArticles((prev) =>
+      prev.map((art) =>
+        art.id === articleId
+          ? {
+              ...art,
+              status: 'Archived',
+              archivedCount: art.totalAccountListings,
+              activeCount: 0,
+              updatedAt: 'Just now',
+            }
+          : art
+      )
+    );
+    setVariants((prev) =>
+      prev.map((v) => (v.articleId === articleId ? { ...v, status: 'Archived' } : v))
+    );
+    addToast('info', 'Archived on Facebook', `All listings for "${target.title.substring(0, 24)}..." moved to archive.`);
+    logActivity('repost', 'Archived on Facebook', `Moved ${target.totalAccountListings} listings for "${target.title}" to archive.`, 'info');
+  };
+
+  const handleDeleteFromFacebook = (articleId: string) => {
+    const target = articles.find((a) => a.id === articleId);
+    if (!target) return;
+    setArticles((prev) =>
+      prev.map((art) =>
+        art.id === articleId
+          ? {
+              ...art,
+              activeCount: 0,
+              deletedCount: art.totalAccountListings,
+              updatedAt: 'Just now',
+            }
+          : art
+      )
+    );
+    addToast('error', 'Deleted from Facebook', `Listings for "${target.title.substring(0, 24)}..." deleted from Facebook Marketplace.`);
+    logActivity('repost', 'Deleted from Facebook', `Removed FB listings for "${target.title}" across all accounts.`, 'warning');
+  };
+
+  const handleDeleteFromWorkspace = (articleId: string) => {
+    const target = articles.find((a) => a.id === articleId);
+    if (!target) return;
+    setArticles((prev) => prev.filter((art) => art.id !== articleId));
+    setVariants((prev) => prev.filter((v) => v.articleId !== articleId));
+    addToast('error', 'Deleted from Workspace', `"${target.title.substring(0, 24)}..." removed permanently from workspace.`);
+    logActivity('repost', 'Deleted from Workspace', `Removed "${target.title}" from local catalog.`, 'warning');
+  };
+
   const handleNavigateToConversations = (articleId: string) => {
     setSelectedArticleIdForConversations(articleId);
     setActiveTab('conversations');
@@ -592,6 +651,10 @@ export default function App() {
               onAddVariant={handleAddVariant}
               onToggleArticleStatus={handleToggleArticleStatus}
               onNavigateToConversations={handleNavigateToConversations}
+              onUpdateArticle={handleUpdateArticle}
+              onArchiveOnFacebook={handleArchiveOnFacebook}
+              onDeleteFromFacebook={handleDeleteFromFacebook}
+              onDeleteFromWorkspace={handleDeleteFromWorkspace}
             />
           )}
 
