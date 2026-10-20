@@ -1,0 +1,6 @@
+{
+  "name": "Marketplace Desk",
+  "description": "Multi-account Facebook Marketplace automation, chatbot and COD order management desk.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
