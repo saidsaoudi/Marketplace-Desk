@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   NavTab,
   ArticleListing,
@@ -32,6 +32,24 @@ import { SettingsView } from './components/settings/SettingsView';
 import { LoginView } from './components/auth/LoginView';
 import { ActivityModal } from './components/modals/ActivityModal';
 import { ToastContainer, ToastMessage } from './components/common/Toast';
+import {
+  fetchArticlesFromDb,
+  upsertArticleInDb,
+  deleteArticleFromDb,
+  fetchVariantsFromDb,
+  upsertVariantInDb,
+  fetchOrdersFromDb,
+  upsertOrderInDb,
+  fetchConversationsFromDb,
+  upsertConversationInDb,
+  fetchAccountsFromDb,
+  upsertAccountInDb,
+  fetchChatbotSettingsFromDb,
+  saveChatbotSettingsInDb,
+  fetchCityFeesFromDb,
+  saveCityFeesInDb,
+} from './services/supabaseService';
+import { isSupabaseConfigured } from './lib/supabase';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('articles');
@@ -61,6 +79,55 @@ export default function App() {
   const [selectedArticleIdForConversations, setSelectedArticleIdForConversations] = useState<string | null>(null);
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  // Initial load from Supabase database
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+
+    let isMounted = true;
+    async function loadData() {
+      try {
+        const [
+          dbArticles,
+          dbVariants,
+          dbOrders,
+          dbConversations,
+          dbAccounts,
+          dbSettings,
+          dbFees,
+        ] = await Promise.all([
+          fetchArticlesFromDb(),
+          fetchVariantsFromDb(),
+          fetchOrdersFromDb(),
+          fetchConversationsFromDb(),
+          fetchAccountsFromDb(),
+          fetchChatbotSettingsFromDb(),
+          fetchCityFeesFromDb(),
+        ]);
+
+        if (!isMounted) return;
+
+        if (dbArticles && dbArticles.length > 0) setArticles(dbArticles);
+        if (dbVariants && dbVariants.length > 0) setVariants(dbVariants);
+        if (dbOrders && dbOrders.length > 0) setOrders(dbOrders);
+        if (dbConversations && dbConversations.length > 0) setConversations(dbConversations);
+        if (dbAccounts && dbAccounts.length > 0) setAccounts(dbAccounts);
+        if (dbSettings) setChatbotSettings(dbSettings);
+        if (dbFees && dbFees.length > 0) setCityFees(dbFees);
+
+        if (dbArticles && dbArticles.length > 0) {
+          addToast('success', 'Supabase Connected', 'Database synchronized with live cloud tables.');
+        }
+      } catch (err) {
+        console.warn('Supabase initial sync fallback to local cache:', err);
+      }
+    }
+
+    loadData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Toast Helper
   const addToast = (type: 'success' | 'error' | 'info', title: string, description?: string) => {
@@ -249,6 +316,7 @@ export default function App() {
     setArticles((prev) =>
       prev.map((art) => (art.id === updatedArticle.id ? updatedArticle : art))
     );
+    upsertArticleInDb(updatedArticle);
     addToast('success', 'Details Updated', `Saved changes for "${updatedArticle.title.substring(0, 24)}...".`);
     logActivity('repost', 'Article updated', `Modified details for "${updatedArticle.title}" (${updatedArticle.price} dhs)`, 'info');
   };
@@ -300,6 +368,7 @@ export default function App() {
     if (!target) return;
     setArticles((prev) => prev.filter((art) => art.id !== articleId));
     setVariants((prev) => prev.filter((v) => v.articleId !== articleId));
+    deleteArticleFromDb(articleId);
     addToast('error', 'Deleted from Workspace', `"${target.title.substring(0, 24)}..." removed permanently from workspace.`);
     logActivity('repost', 'Deleted from Workspace', `Removed "${target.title}" from local catalog.`, 'warning');
   };
