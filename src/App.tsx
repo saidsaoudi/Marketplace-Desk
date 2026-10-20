@@ -32,6 +32,7 @@ import { SettingsView } from './components/settings/SettingsView';
 import { LoginView } from './components/auth/LoginView';
 import { ActivityModal } from './components/modals/ActivityModal';
 import { ToastContainer, ToastMessage } from './components/common/Toast';
+import { NewArticleData } from './components/modals/ImportZipModal';
 import {
   fetchArticlesFromDb,
   upsertArticleInDb,
@@ -49,7 +50,7 @@ import {
   fetchCityFeesFromDb,
   saveCityFeesInDb,
 } from './services/supabaseService';
-import { isSupabaseConfigured } from './lib/supabase';
+import { supabase, isSupabaseConfigured } from './lib/supabase';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('articles');
@@ -219,45 +220,164 @@ export default function App() {
     logActivity('repost', 'Views refreshed', 'Marketplace analytics crawler updated impression counts.', 'success');
   };
 
-  const handleImportZip = (title: string, price: number, variantsCount: number) => {
+  const handleAddArticle = async (data: NewArticleData) => {
+    const {
+      title,
+      price,
+      category,
+      condition,
+      location,
+      description,
+      facebookUrl,
+      status,
+      image,
+      selectedAccountIds,
+    } = data;
+
+    const targetAccounts =
+      selectedAccountIds.length > 0
+        ? accounts.filter((a) => selectedAccountIds.includes(a.id))
+        : accounts;
+
+    const variantsCount = Math.max(1, targetAccounts.length);
+
     const newArticle: ArticleListing = {
       id: `art-${Date.now()}`,
       title,
       price,
-      image: '/src/assets/images/product_cordless_drill_kit_1792497060070.jpg',
-      status: 'Published',
-      totalAccountListings: 12,
-      activeCount: 3,
-      archivedCount: 9,
+      image: image || '/src/assets/images/product_cordless_drill_kit_1792497060070.jpg',
+      status: status || 'Published',
+      totalAccountListings: variantsCount,
+      activeCount: variantsCount,
+      archivedCount: 0,
       deletedCount: 0,
       views: 0,
       variantsCount,
       conversationsCount: 0,
       unreadConversationsCount: 0,
-      category: 'Tools & Home Improvement',
+      category: category || 'Maison et cuisine',
+      condition: condition || 'New',
+      location: location || 'Casablanca',
+      description: description || '',
+      facebookUrl: facebookUrl || '',
       updatedAt: 'Just now',
     };
 
-    const newVariantsList: ArticleVariant[] = Array.from({ length: variantsCount }).map((_, i) => ({
-      id: `var-new-${Date.now()}-${i}`,
+    const newVariantsList: ArticleVariant[] = (targetAccounts.length > 0 ? targetAccounts : [{ displayName: 'Main Account' } as any]).map((acc, i) => ({
+      id: `var-${Date.now()}-${i}`,
       articleId: newArticle.id,
-      titleVariant: `${title} - Pack V${i + 1} Casablanca / Rabat`,
-      city: i % 2 === 0 ? 'Casablanca' : 'Rabat',
-      account: accounts[i % accounts.length].displayName,
+      titleVariant: `${title} - ${location || 'Casablanca'} (${acc.displayName})`,
+      city: location || 'Casablanca',
+      account: acc.displayName,
       views: 0,
       status: 'Active',
-      lastRepostedAt: 'Just imported',
+      lastRepostedAt: 'Just now',
     }));
+
+    // Generate dynamic prospective buyer conversations for this new article
+    const primaryAccount = targetAccounts[0]?.identifier || targetAccounts[0]?.displayName || 'Boutique Casablanca';
+    const buyer1Phone = `06${Math.floor(10000000 + Math.random() * 89999999)}`;
+    const buyer2Phone = `07${Math.floor(10000000 + Math.random() * 89999999)}`;
+    const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const dynamicConv1: Conversation = {
+      id: `conv-${Date.now()}-1`,
+      articleId: newArticle.id,
+      buyerName: 'Hamza El Fassi',
+      buyerPhone: buyer1Phone,
+      buyerCity: location || 'Casablanca',
+      facebookAccount: primaryAccount,
+      lastMessage: `Salam khoya, wash mazal dispo "${title.slice(0, 30)}..."?`,
+      lastMessageTime: nowTime,
+      unread: true,
+      botPaused: false,
+      hasOrderCreated: false,
+      sentiment: 'positive',
+      sentimentScore: 88,
+      interventionType: 'auto',
+      resolutionStatus: 'in_progress',
+      messages: [
+        {
+          id: `msg-${Date.now()}-1`,
+          sender: 'buyer',
+          text: `Salam khoya, wash mazal dispo "${title}"? Bghit nchriha.`,
+          timestamp: nowTime,
+        },
+        {
+          id: `msg-${Date.now()}-2`,
+          sender: 'bot',
+          text: `Ahlan khoya Hamza! Ah mazal dispo b taman ${price} MAD. Fin kayn f ${location || 'Casablanca'} bach nsiftoha lik m3a livreur?`,
+          timestamp: nowTime,
+          isAutoReply: true,
+        },
+      ],
+    };
+
+    const dynamicConv2: Conversation = {
+      id: `conv-${Date.now()}-2`,
+      articleId: newArticle.id,
+      buyerName: 'Khadija Berrada',
+      buyerPhone: buyer2Phone,
+      buyerCity: 'Rabat',
+      facebookAccount: targetAccounts[1]?.identifier || primaryAccount,
+      lastMessage: `Salam, wash kayn livraison l Rabat o ch7al kayakhod lwa9t?`,
+      lastMessageTime: 'Just now',
+      unread: true,
+      botPaused: false,
+      hasOrderCreated: false,
+      sentiment: 'neutral',
+      sentimentScore: 78,
+      interventionType: 'auto',
+      resolutionStatus: 'in_progress',
+      messages: [
+        {
+          id: `msg-${Date.now()}-3`,
+          sender: 'buyer',
+          text: `Salam, wash kayn livraison l Rabat o ch7al kayakhod lwa9t?`,
+          timestamp: 'Just now',
+        },
+      ],
+    };
+
+    const newConversations = [dynamicConv1, dynamicConv2];
+    newArticle.conversationsCount = 2;
+    newArticle.unreadConversationsCount = 2;
 
     setArticles((prev) => [newArticle, ...prev]);
     setVariants((prev) => [...prev, ...newVariantsList]);
-    addToast('success', 'Archive Imported', `Created listing with ${variantsCount} localized variants.`);
-    logActivity(
-      'repost',
-      'ZIP Imported',
-      `Imported "${title}" (${price} dhs) with ${variantsCount} city variants.`,
-      'success'
-    );
+    setConversations((prev) => [...newConversations, ...prev]);
+
+    addToast('success', 'Article & Leads Generated', `Added "${title}" with 2 dynamic buyer inquiries.`);
+    logActivity('repost', 'Article Added', `Added "${title}" (${price} MAD) to marketplace catalog.`, 'success');
+
+    // Persist to Supabase
+    if (isSupabaseConfigured) {
+      const artSaved = await upsertArticleInDb(newArticle);
+      for (const v of newVariantsList) {
+        await upsertVariantInDb(v);
+      }
+      for (const c of newConversations) {
+        await upsertConversationInDb(c);
+      }
+      if (artSaved) {
+        addToast('success', 'Saved to Supabase ☁️', `Article "${title}" and 2 dynamic buyer conversations synced to cloud.`);
+      }
+    }
+  };
+
+  const handleImportZip = (title: string, price: number, variantsCount: number) => {
+    handleAddArticle({
+      title,
+      price,
+      category: 'Tools & Home Improvement',
+      condition: 'New',
+      location: 'Casablanca',
+      description: '',
+      facebookUrl: '',
+      status: 'Published',
+      image: '/src/assets/images/product_cordless_drill_kit_1792497060070.jpg',
+      selectedAccountIds: [],
+    });
   };
 
   const handleRepostVariant = (variantId: string) => {
@@ -392,13 +512,17 @@ export default function App() {
     setConversations((prev) =>
       prev.map((conv) => {
         if (conv.id !== conversationId) return conv;
-        return {
+        const updated = {
           ...conv,
           messages: [...conv.messages, newMsg],
           lastMessage: text,
           lastMessageTime: timestamp,
           unread: false,
         };
+        if (isSupabaseConfigured) {
+          upsertConversationInDb(updated);
+        }
+        return updated;
       })
     );
 
@@ -416,13 +540,13 @@ export default function App() {
         setConversations((prev) =>
           prev.map((c) => {
             if (c.id !== conversationId) return c;
-            return {
+            const updated = {
               ...c,
               messages: [
                 ...c.messages,
                 {
                   id: `buyer-${Date.now()}`,
-                  sender: 'buyer',
+                  sender: 'buyer' as const,
                   text: randomReply,
                   timestamp: replyTime,
                 },
@@ -430,6 +554,10 @@ export default function App() {
               lastMessage: randomReply,
               lastMessageTime: replyTime,
             };
+            if (isSupabaseConfigured) {
+              upsertConversationInDb(updated);
+            }
+            return updated;
           })
         );
       }, 1800);
@@ -438,9 +566,14 @@ export default function App() {
 
   const handleToggleBotPause = (conversationId: string) => {
     setConversations((prev) =>
-      prev.map((c) =>
-        c.id === conversationId ? { ...c, botPaused: !c.botPaused } : c
-      )
+      prev.map((c) => {
+        if (c.id !== conversationId) return c;
+        const updated = { ...c, botPaused: !c.botPaused };
+        if (isSupabaseConfigured) {
+          upsertConversationInDb(updated);
+        }
+        return updated;
+      })
     );
     const target = conversations.find((c) => c.id === conversationId);
     addToast('info', target?.botPaused ? 'Bot Resumed' : 'Bot Paused', 'Manual seller takeover toggled.');
@@ -474,8 +607,18 @@ export default function App() {
 
     setOrders((prev) => [newOrder, ...prev]);
     setConversations((prev) =>
-      prev.map((c) => (c.id === conversation.id ? { ...c, hasOrderCreated: true, resolutionStatus: 'converted' } : c))
+      prev.map((c) => {
+        if (c.id !== conversation.id) return c;
+        const updated = { ...c, hasOrderCreated: true, resolutionStatus: 'converted' as const };
+        if (isSupabaseConfigured) {
+          upsertConversationInDb(updated);
+        }
+        return updated;
+      })
     );
+    if (isSupabaseConfigured) {
+      upsertOrderInDb(newOrder);
+    }
     addToast('success', 'Order Draft Created', `Order for ${conversation.buyerName} created successfully.`);
     logActivity('order', 'COD Order Created', `Created order ${newOrder.orderNumber} (${total} dhs)`, 'success');
     setActiveTab('orders');
@@ -489,17 +632,28 @@ export default function App() {
   };
 
   // Handlers for Accounts
-  const handleAddAccount = (acc: FacebookAccount) => {
+  const handleAddAccount = async (acc: FacebookAccount) => {
     setAccounts((prev) => [...prev, acc]);
     addToast('success', 'Account Added', `Connected ${acc.displayName} with dedicated proxy.`);
     logActivity('account', 'Account added', `Registered ${acc.displayName} (${acc.proxy?.ip || 'proxy'})`, 'success');
+    // Persist to Supabase
+    const saved = await upsertAccountInDb(acc);
+    if (saved) {
+      addToast('success', 'Saved to Supabase', `Account "${acc.displayName}" synchronized to cloud database.`);
+    } else {
+      addToast('error', 'Supabase Sync Failed', 'Account saved locally but cloud sync failed. Check connection.');
+    }
   };
 
-  const handleDeleteAccount = (id: string) => {
+  const handleDeleteAccount = async (id: string) => {
     const acc = accounts.find((a) => a.id === id);
     setAccounts((prev) => prev.filter((a) => a.id !== id));
     addToast('info', 'Account Removed', `Disconnected account ${acc?.displayName || id}.`);
     logActivity('account', 'Account deleted', `Removed account ${acc?.displayName || id}`, 'warning');
+    // Remove from Supabase
+    if (isSupabaseConfigured) {
+      await supabase.from('facebook_accounts').delete().eq('id', id);
+    }
   };
 
   const handleToggleChatbotAccount = (id: string) => {
@@ -714,8 +868,10 @@ export default function App() {
             <ArticlesView
               articles={articles}
               variants={variants}
+              accounts={accounts}
               onRefreshViews={handleRefreshViews}
               onImportZip={handleImportZip}
+              onAddArticle={handleAddArticle}
               onRepostVariant={handleRepostVariant}
               onAddVariant={handleAddVariant}
               onToggleArticleStatus={handleToggleArticleStatus}

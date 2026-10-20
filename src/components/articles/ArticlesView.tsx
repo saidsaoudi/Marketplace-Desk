@@ -1,22 +1,25 @@
 import React, { useState } from 'react';
-import { ArticleListing, ArticleVariant } from '../../types';
+import { ArticleListing, ArticleVariant, FacebookAccount } from '../../types';
 import {
   Search,
   RefreshCw,
-  FileArchive,
+  Plus,
   Eye,
   ChevronDown,
+  ExternalLink,
 } from 'lucide-react';
 import { ManageVariantsModal } from '../modals/ManageVariantsModal';
-import { ImportZipModal } from '../modals/ImportZipModal';
+import { ImportZipModal, NewArticleData } from '../modals/ImportZipModal';
 import { EditArticleModal } from '../modals/EditArticleModal';
 import { ConfirmActionModal } from '../modals/ConfirmActionModal';
 
 interface ArticlesViewProps {
   articles: ArticleListing[];
   variants: ArticleVariant[];
+  accounts?: FacebookAccount[];
   onRefreshViews: () => void;
-  onImportZip: (title: string, price: number, variantsCount: number) => void;
+  onImportZip?: (title: string, price: number, variantsCount: number) => void;
+  onAddArticle?: (data: NewArticleData) => void;
   onRepostVariant: (variantId: string) => void;
   onAddVariant: (variant: Omit<ArticleVariant, 'id' | 'views' | 'lastRepostedAt'>) => void;
   onToggleArticleStatus: (articleId: string) => void;
@@ -30,8 +33,10 @@ interface ArticlesViewProps {
 export const ArticlesView: React.FC<ArticlesViewProps> = ({
   articles,
   variants,
+  accounts = [],
   onRefreshViews,
   onImportZip,
+  onAddArticle,
   onRepostVariant,
   onAddVariant,
   onToggleArticleStatus,
@@ -136,6 +141,18 @@ export const ArticlesView: React.FC<ArticlesViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2.5">
+          <a
+            href="https://www.facebook.com/marketplace/you/selling"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-slate-300 hover:text-white bg-[#1877f2]/10 hover:bg-[#1877f2]/20 border border-[#1877f2]/30 rounded-lg transition-colors cursor-pointer"
+            title="Open Facebook Marketplace Selling"
+          >
+            <span className="font-bold text-[#1877f2] text-sm" style={{ fontFamily: 'Georgia, serif' }}>f</span>
+            <span>FB Selling</span>
+            <ExternalLink className="w-3 h-3 text-blue-400" />
+          </a>
+
           <button
             onClick={handleRefreshClick}
             disabled={isRefreshing}
@@ -149,8 +166,8 @@ export const ArticlesView: React.FC<ArticlesViewProps> = ({
             onClick={() => setIsImportModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg shadow-sm shadow-blue-500/20 transition-all cursor-pointer"
           >
-            <FileArchive className="w-4 h-4" />
-            <span>Import ZIP</span>
+            <Plus className="w-4 h-4" />
+            <span>Add Article</span>
           </button>
         </div>
       </div>
@@ -347,6 +364,35 @@ export const ArticlesView: React.FC<ArticlesViewProps> = ({
                             {/* Menu Container */}
                             <div className="absolute right-0 top-full mt-1.5 w-48 bg-slate-900 border border-slate-700/90 rounded-xl shadow-2xl py-1 z-30 text-left divide-y divide-slate-800/80 animate-in fade-in duration-100">
                               <div className="py-1">
+                                {/* 0. Publish to Facebook Marketplace */}
+                                <a
+                                  href="https://www.facebook.com/marketplace/create/item"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => {
+                                    try {
+                                      navigator.clipboard.writeText(`${article.title}\nPrix: ${article.price} MAD\n${article.description || ''}`);
+                                    } catch (e) {}
+                                    setActiveActionMenuId(null);
+                                  }}
+                                  className="w-full px-3.5 py-2 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/10 flex items-center justify-between transition-colors cursor-pointer font-medium"
+                                >
+                                  <span>+ Publier sur Marketplace</span>
+                                  <ExternalLink className="w-3 h-3 text-blue-400" />
+                                </a>
+
+                                {/* 0.1 View on FB Selling */}
+                                <a
+                                  href="https://www.facebook.com/marketplace/you/selling"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => setActiveActionMenuId(null)}
+                                  className="w-full px-3.5 py-2 text-xs text-slate-300 hover:text-white hover:bg-slate-800/90 flex items-center justify-between transition-colors cursor-pointer"
+                                >
+                                  <span>Voir sur FB (Mes ventes)</span>
+                                  <ExternalLink className="w-3 h-3 text-slate-400" />
+                                </a>
+
                                 {/* 1. Edit details */}
                                 <button
                                   onClick={() => {
@@ -482,11 +528,13 @@ export const ArticlesView: React.FC<ArticlesViewProps> = ({
         onAddVariant={onAddVariant}
       />
 
-      {/* Import ZIP Archive Modal */}
+      {/* Add Article Modal */}
       <ImportZipModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImportSuccess={onImportZip}
+        onAddArticle={onAddArticle}
+        accounts={accounts}
       />
 
       {/* Confirmation Modal */}
