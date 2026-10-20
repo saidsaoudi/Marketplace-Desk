@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "Marketplace Desk Auto-Publisher",
+  "version": "1.0.0",
+  "description": "Auto-publish products from Marketplace Desk directly to Facebook Marketplace with 1 click.",
+  "icons": {
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Marketplace Desk Auto-Publisher"
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://www.facebook.com/*",
+    "http://localhost:3000/*",
+    "http://127.0.0.1:3000/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost:3000/*",
+        "http://127.0.0.1:3000/*"
+      ],
+      "js": ["content_app.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": [
+        "https://www.facebook.com/marketplace/create/*",
+        "https://www.facebook.com/marketplace/you/selling*"
+      ],
+      "js": ["content_facebook.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

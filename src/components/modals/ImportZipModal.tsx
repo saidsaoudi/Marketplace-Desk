@@ -143,14 +143,33 @@ export const ImportZipModal: React.FC<ImportZipModalProps> = ({
 
     // If publishing to Facebook Marketplace is enabled
     if (publishToFacebook) {
+      const articlePayload = {
+        title: title.trim(),
+        price: parsedPrice,
+        category,
+        condition,
+        location,
+        description,
+        image: primaryImage,
+      };
+
+      // 1. Send to Extension via window.postMessage
+      try {
+        window.postMessage({
+          type: 'MP_PUBLISH_ARTICLE',
+          article: articlePayload,
+        }, '*');
+      } catch (e) {}
+
+      // 2. Clipboard fallback
       try {
         const textToCopy = `Titre: ${title.trim()}\nPrix: ${parsedPrice} MAD\nVille: ${location}\nCatégorie: ${category}\n${description ? `Description:\n${description}` : ''}`;
         navigator.clipboard.writeText(textToCopy);
-      } catch (err) {
-        // clipboard access optional
-      }
-      // Open Facebook Marketplace Item creation page
-      window.open('https://www.facebook.com/marketplace/create/item', '_blank');
+      } catch (err) {}
+
+      // 3. Open Facebook Marketplace Item creation with payload in hash
+      const encoded = encodeURIComponent(JSON.stringify(articlePayload));
+      window.open(`https://www.facebook.com/marketplace/create/item#mp_data=${encoded}`, '_blank');
     }
 
     setTimeout(() => {

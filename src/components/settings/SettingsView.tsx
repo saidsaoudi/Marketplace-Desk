@@ -20,6 +20,7 @@ import {
   ChevronRight,
   ExternalLink,
   Lock,
+  FolderOpen,
 } from 'lucide-react';
 import { AddUserModal } from '../modals/AddUserModal';
 
@@ -261,45 +262,58 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {/* 5. Facebook connection */}
       <div className="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-4">
-        <div>
-          <h2 className="text-base font-semibold text-white">Facebook connection</h2>
-          <p className="text-slate-400 mt-0.5">Browser session bridge & Edge extension configuration</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-white">Marketplace Desk Auto-Publisher Extension</h2>
+            <p className="text-slate-400 mt-0.5">Extension Chrome & Edge pour publier automatiquement vos articles sur Facebook Marketplace</p>
+          </div>
+          <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            Extension Prête (v1.0.0)
+          </span>
         </div>
 
-        <button
-          onClick={() => onToast?.('success', 'Extension Ready', 'Edge extension manifest package prepared for install.')}
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl shadow-sm transition-all"
-        >
-          <Download className="w-4 h-4" />
-          <span>Install in Edge</span>
-        </button>
-
-        <div className="space-y-1 text-slate-400 leading-relaxed">
-          <p>Download the extension and follow the Edge setup steps.</p>
-          <p className="text-slate-300">
-            Your Facebook session is configured. You can import articles, publish and reply from this dashboard.
-          </p>
-          <p className="text-slate-500 text-[11px]">
-            Facebook may ask you to choose a category or confirm your location. Any unfinished step appears in Activity.
-          </p>
-        </div>
-
-        <div>
-          <button
-            type="button"
-            onClick={() => setShowStoreInstallation(!showStoreInstallation)}
-            className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 font-medium pt-1"
+        <div className="flex flex-wrap items-center gap-3 pt-1">
+          <a
+            href="/marketplace-desk-extension.zip"
+            download="marketplace-desk-extension.zip"
+            className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl shadow-sm transition-all text-xs"
           >
-            {showStoreInstallation ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            <span>Enable store installation</span>
+            <Download className="w-4 h-4" />
+            <span>Télécharger Extension (.ZIP)</span>
+          </a>
+          <button
+            onClick={() => onToast?.('info', 'Emplacement Dossier', 'Dossier: c:\\Users\\s1349\\Desktop\\Marketplace-Desk\\marketplace-desk-extension')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium rounded-xl border border-slate-700 transition-all text-xs"
+          >
+            <FolderOpen className="w-4 h-4 text-blue-400" />
+            <span>Dossier Source : marketplace-desk-extension</span>
           </button>
+        </div>
 
-          {showStoreInstallation && (
-            <div className="p-3.5 mt-2 bg-slate-950/60 rounded-xl border border-slate-800 text-slate-400 space-y-2">
-              <p>For headless cloud deployment, upload packed Chrome/Edge manifest v3 extension to local storage.</p>
-              <div className="font-mono text-[11px] text-slate-500">ID: cpanel-edge-ext-v2.4.9</div>
+        {/* 3-Step Setup Guide */}
+        <div className="bg-slate-950/70 border border-slate-800 rounded-xl p-4 space-y-3 text-xs">
+          <p className="font-semibold text-white flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            Comment l'activer dans votre navigateur en 30 secondes :
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg space-y-1">
+              <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[11px]">1</span>
+              <p className="font-medium text-slate-200">Ouvrez Extensions</p>
+              <p className="text-[11px] text-slate-400">Tapez <span className="text-blue-400 font-mono">chrome://extensions</span> ou <span className="text-blue-400 font-mono">edge://extensions</span></p>
             </div>
-          )}
+            <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg space-y-1">
+              <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[11px]">2</span>
+              <p className="font-medium text-slate-200">Activez Mode Développeur</p>
+              <p className="text-[11px] text-slate-400">Cochez <strong>Mode développeur</strong> en haut à droite.</p>
+            </div>
+            <div className="p-3 bg-slate-900 border border-slate-800 rounded-lg space-y-1">
+              <span className="w-5 h-5 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[11px]">3</span>
+              <p className="font-medium text-slate-200">Charger le dossier</p>
+              <p className="text-[11px] text-slate-400">Cliquez <strong>Charger l'extension non empaquetée</strong> et sélectionnez le dossier <span className="text-emerald-400 font-mono">marketplace-desk-extension</span>.</p>
+            </div>
+          </div>
         </div>
       </div>
 
