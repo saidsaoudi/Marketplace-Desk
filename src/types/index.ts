@@ -16,6 +16,11 @@ export interface ArticleListing {
   conversationsCount: number;
   unreadConversationsCount: number;
   category?: string;
+  condition?: string;
+  location?: string;
+  description?: string;
+  facebookUrl?: string;
+  photos?: string[];
 }
 
 export interface ArticleVariant {

@@ -26,7 +26,11 @@ export const initialArticles: ArticleListing[] = [
     updatedAt: 'Oct 20, 02:06 PM',
     conversationsCount: 2,
     unreadConversationsCount: 2,
-    category: 'Home & Kitchen',
+    category: 'Maison et cuisine',
+    condition: 'New',
+    location: 'Casablanca',
+    description: 'نظافة سريعة وسهلة للزجاج من الداخل والخارج بنفس الوقت. منظف زجاج مغناطيسي ثنائي الجوانب كيعاونك تنظف النوافذ بدون مجهود كبير. مناسب لزجاج النوافذ، البالكون وواجهات الزجاج. Kayji m3ah accessoires de rechange pour une utilisation pratique au quotidien.',
+    facebookUrl: '',
   },
   {
     id: 'art-2',
@@ -43,7 +47,11 @@ export const initialArticles: ArticleListing[] = [
     updatedAt: 'Oct 19, 10:08 PM',
     conversationsCount: 24,
     unreadConversationsCount: 1,
-    category: 'Tools & Hardware',
+    category: 'Outils et bricolage',
+    condition: 'New',
+    location: 'Casablanca',
+    description: 'Pack complet perceuse visseuse 48V sans fil avec 2 batteries haute autonomie, chargeur rapide et boîte de 24 accessoires pour travaux intérieurs et extérieurs.',
+    facebookUrl: 'https://www.facebook.com/marketplace/item/293849102948192/',
   },
 ];
 
